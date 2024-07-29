@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dashboard</title>
+
+    <script>
+        var id=sessionStorage.getItem('userId');
+        const ws = new WebSocket('ws://localhost:3000?userId='+id);
+        let receiverId='66a4bca2d68d61983ca3856e';
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log(data)
+            if(data.type=='userList'){
+                data.users.forEach(user => {
+                    document.getElementById('other-users').innerHTML+=`
+                    ${user.name}
+                    <button class="user-button" onclick="setReceiverId('${user._id}')">Select</button><br>`;
+                });
+            }
+            else if(data.type=='message'){
+                document.getElementById('messages').innerHTML+=`<div>${data.user}: ${data.message}</div>`;
+            }
+        };
+
+        function setReceiverId(id) {
+            receiverId = id;
+            console.log('Receiver ID set to:', receiverId);
+        }
+
+        ws.onopen=()=>{
+            console.log("Websocket Connected");
+            document.getElementById('connected-user').innerHTML=id;
+        }
+
+          function getUsers(){
+            ws.send(JSON.stringify({type:"userList","userId":id}));
+            return false;
+          }
+
+          function sendMessage(){
+            var message = document.getElementById('message').value;
+            ws.send(JSON.stringify({type:"message","fromUserId":id,"toUserId":receiverId,"message":message}));
+            document.getElementById('message').value='';
+            return false;
+          }
+
+    </script>
+
+
+
+</head>
+<body>
+    <div>    
+    <div id="connected-user"></div>
+    <div id="chat-area">
+        <div id="messages"></div>
+        <div id="message-input">
+            <input id="message" autocomplete="off" placeholder="Type a message..." />
+            <button id="send" onclick="sendMessage()">Send</button>
+    </div>
+    <button onclick="getUsers()">Fetch users</button>
+    <div id="requests"></div>
+    <div id="other-users"></div>
+</div>
+
+
+</body>
+</html>
