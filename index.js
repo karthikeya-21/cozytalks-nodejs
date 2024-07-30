@@ -137,8 +137,8 @@ wss.on('connection', async(ws,req) => {
         else  if(data.type=='load_notifications'){
             loadNotifications(ws,data)
         }
-        else if(data.type=='chat_history'){
-            sendChatHistory(data);
+        else if(data.type=='load_history'){
+            loadChatHistory(ws,data);
         }
     });
 
@@ -334,6 +334,43 @@ async function getUsersWithoutChatRequests(ws,data) {
     }
 }
 
-async function sendChatHistory(data){
-    
+async function loadChatHistory(ws,data){
+    try {
+        // Fetch all chats between the users
+        const chats = await Chat.find({
+            $or: [
+                { from_user_id: data.fromUserId, to_user_id: data.toUserId },
+                { from_user_id: data.toUserId, to_user_id: data.fromUserId     }
+            ]
+        }).sort({ createdAt: 1 });
+
+        let sub_data = [];
+
+        // Iterate over each chat and get user details
+        for (let chat of chats) {
+            const user = await User.findById(chat.from_user_id);
+
+            sub_data.push({
+                id: chat._id,
+                from_user_id: chat.from_user_id,
+                to_user_id: chat.to_user_id,
+                chat_message: chat.chat_message,
+                created_at: chat.createdAt,
+                name: user.name,
+                user_image: user.user_image
+            });
+        }
+
+        // Prepare data to be sent
+        const send_data = {
+            type: 'load_history',
+            data: sub_data
+        };
+
+        ws.send(JSON.stringify(send_data))
+
+    } catch (error) {
+        console.error('Error fetching chat history:', error);
+        throw error;
+    }
 }
