@@ -115,7 +115,13 @@ wss.on('connection', async(ws,req) => {
         console.log(err)
     }
     ws.send(JSON.stringify({type:"connection",msg:"Connected Successfully"}));
-
+    wss.clients.forEach(function each(client) {
+        if (client.readyState === WebSocket.OPEN) {
+            data={type: "reload"}
+            console.log('sending reload');
+            client.send(JSON.stringify(data)); // Send message to all connected clients
+        }
+    });
     ws.on('message', async (message) => {
         console.log(`Received message => ${message}`);
         const data = JSON.parse(message);
@@ -152,6 +158,20 @@ wss.on('connection', async(ws,req) => {
             );
         }
         socketMap.delete(socketId);
+        wss.clients.forEach(function each(client) {
+            if (client.readyState === WebSocket.OPEN) {
+                data={type: "reload"}
+                console.log('sending reload');
+                client.send(JSON.stringify(data)); // Send message to all connected clients
+            }
+        });
+        // socketMap.forEach((ws, socketId) => {
+        //     console.log('checking for ready state')
+        //     if (ws.readyState === WebSocket.OPEN) {
+        //         ws.send(JSON.stringify({ type: 'broadcast', message: 'Hello Everyone!' }));
+        //     }
+        // });
+
     });
 });
 
@@ -187,7 +207,7 @@ async function fetchUsersExceptMe(ws,data){
 }
 
 async function sendFriendRequest(data){
-
+    if(data.fromUserId && data.toUserId){
     const friendRequest=new ChatRequest({from_user_id: data.fromUserId, to_user_id: data.toUserId, status: "pending"})
     await friendRequest.save();
     const sender=await User.findById(data.fromUserId).exec();
@@ -201,6 +221,10 @@ async function sendFriendRequest(data){
     }
     if(senderSocket){
         senderSocket.send(JSON.stringify({ type:'updateUI', user: receiver.name }));
+    }
+    }
+    else{
+        console.log("Error sending friend request")
     }
 }
 
